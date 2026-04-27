@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -12,7 +13,7 @@ import (
 	"github.com/bxxf/regiojet-watchdog/internal/config"
 	"github.com/bxxf/regiojet-watchdog/internal/constants"
 	"github.com/bxxf/regiojet-watchdog/internal/database"
-	"github.com/google/uuid"
+	"github.com/bxxf/regiojet-watchdog/internal/models"
 	"go.uber.org/fx"
 )
 
@@ -34,8 +35,11 @@ func NewServer(trainClient *client.TrainClient, config config.Config, constantsC
 }
 
 func (s *Server) run() {
+	http.Handle("/", http.FileServer(http.Dir("./tpl")))
+
 	http.HandleFunc("/routes", s.getRoutesHandler)
-	http.HandleFunc(("/watchdog"), s.watchdogHandler)
+	http.HandleFunc("/watchdog", s.watchdogSetHandler)
+	http.HandleFunc("/watchdog/remove", s.watchdogRemoveHandler)
 	http.HandleFunc("/constants", s.constantsHandler)
 
 	port := s.config.Port
@@ -66,12 +70,13 @@ func (s *Server) getRoutesHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) watchdogHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) watchdogSetHandler(w http.ResponseWriter, r *http.Request) {
 	body := struct {
 		StationFromID string `json:"stationFromID"`
 		StationToID   string `json:"stationToID"`
 		RouteID       string `json:"routeID"`
 		WebhookURL    string `json:"webhookURL"`
+		CheckSegments bool   `json:"checkSegments"`
 	}{}
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -90,8 +95,21 @@ func (s *Server) watchdogHandler(w http.ResponseWriter, r *http.Request) {
 	departureTime, _ := time.Parse(time.RFC3339, routeDetails.DepartureTime)
 	departureDuration := departureTime.Sub(time.Now())
 
-	uuid := "watchdog:" + uuid.New().String()
-	s.database.RedisClient.Set(context.Background(), uuid, body.WebhookURL+";;"+body.StationFromID+";;"+body.StationToID+";;"+body.RouteID, departureDuration)
+	jsonWebhook, err := json.Marshal(models.Webhook{
+		WebhookURL:    body.WebhookURL,
+		StationFromID: body.StationFromID,
+		StationToID:   body.StationToID,
+		RouteID:       body.RouteID,
+		CheckSegments: body.CheckSegments,
+	})
+	if err != nil {
+		http.Error(w, "Failed to marshal JSON payload", http.StatusBadRequest)
+		log.Println("Failed to marshal JSON payload", err)
+		return
+	}
+
+	key := "watchdog:" + fmt.Sprint(routeInt)
+	s.database.RedisClient.Set(context.Background(), key, jsonWebhook, departureDuration)
 
 	res := struct {
 		Message string `json:"message"`
@@ -103,7 +121,34 @@ func (s *Server) watchdogHandler(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(res); err != nil {
 		http.Error(w, "Failed to write response", http.StatusInternalServerError)
 	}
+}
 
+func (s *Server) watchdogRemoveHandler(w http.ResponseWriter, r *http.Request) {
+	body := struct {
+		RouteID string `json:"routeID"`
+	}{}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "Failed to parse request body", http.StatusBadRequest)
+		log.Println("Failed to parse request body:", err)
+		return
+	}
+
+	routeInt, _ := strconv.Atoi(body.RouteID)
+
+	key := "watchdog:" + fmt.Sprint(routeInt)
+	s.database.RedisClient.Del(context.Background(), key)
+
+	res := struct {
+		Message string `json:"message"`
+	}{
+		Message: "Watchdog removed successfully.",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+	}
 }
 
 func (s *Server) constantsHandler(w http.ResponseWriter, r *http.Request) {

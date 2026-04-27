@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/bxxf/regiojet-watchdog/internal/database"
 	"github.com/bxxf/regiojet-watchdog/internal/models"
 	"go.uber.org/zap"
 )
@@ -16,14 +18,16 @@ import (
 const baseURL = "https://brn-ybus-pubapi.sa.cz/restapi"
 
 type TrainClient struct {
-	logger *zap.Logger
-	client *http.Client
+	logger   *zap.Logger
+	client   *http.Client
+	database *database.DatabaseClient
 }
 
-func NewTrainClient(logger *zap.Logger) *TrainClient {
+func NewTrainClient(logger *zap.Logger, database *database.DatabaseClient) *TrainClient {
 	return &TrainClient{
-		logger: logger,
-		client: &http.Client{},
+		logger:   logger,
+		client:   &http.Client{},
+		database: database,
 	}
 }
 
@@ -70,13 +74,7 @@ func (c *TrainClient) FetchRoutes(stationFromID, stationToID, departureDate, cur
 	var routes []models.Route
 	for _, ticket := range responseJson.Routes {
 		vehicleType := ticket.VehicleTypes[0]
-		containsBus := false
 		if vehicleType == "BUS" {
-			containsBus = true
-			break
-		}
-
-		if containsBus {
 			continue
 		}
 
@@ -102,13 +100,19 @@ func (c *TrainClient) FetchRoutes(stationFromID, stationToID, departureDate, cur
 
 		arrivalString := arrivalTime.Format("15:04")
 
+		key := "watchdog:" + fmt.Sprint(ticket.ID)
+		_, err = c.database.RedisClient.Get(context.Background(), key).Result()
+		watchdog := err == nil
+
 		routes = append(routes, models.Route{
 			ID:            ticket.ID,
 			DepartureTime: departureString,
 			ArrivalTime:   arrivalString,
 			PriceFrom:     ticket.PriceFrom,
 			PriceTo:       ticket.PriceTo,
+			Bookable:      ticket.Bookable,
 			FreeSeats:     ticket.FreeSeatsCount,
+			Watchdog:      watchdog,
 		})
 
 	}

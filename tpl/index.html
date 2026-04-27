@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RegioJet Watchdog</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <div x-data="searchComponent()" class="search-container">
+            <div class="field">
+                <label>Stration from</label>
+                <select x-model="fromId">
+                    <optio value="">---</option>
+                    <template x-for="station in stations" :key="station.id">
+                    <option :value="station.id" :selected="station.id == fromId" x-text="station.name"></option>
+                    </template>    
+                </select>
+            </div>
+            <div class="field">
+                <label>Station to</label>
+                <select x-model="toId">
+                    <optio value="">---</option>
+                    <template x-for="station in stations" :key="station.id">
+                    <option :value="station.id" :selected="station.id == toId" x-text="station.name"></option>
+                    </template>    
+                </select>
+            </div>
+            <div class="field">
+                <label>Departure</label>
+                <input type="date" x-model="departure"> 
+            </div>
+            <button class="search-btn" type="button" @click="search()">Search</button>
+        </div>
+
+        <div x-data="routesComponent()" @routes-set.window="set($event.detail)" class="routes">
+            <table>
+                <thead>
+                <tr>
+                    <th>Departure</th>
+                    <th>Arrival</th>
+                    <th>Seats</th>
+                    <th>Price</th>
+                    <th>&nbsp;</th>
+                </tr>
+                </thead>
+                <tbody>
+                <template x-for="route in routes" :key="route.id">
+                <tr :class="{'has-seats': route.bookable, 'no-seats': !route.bookable}">
+                    <td x-text="route.departureTime" class="time-dep"></td>
+                    <td x-text="route.arrivalTime" class="time-arr"></td>
+                    <td>
+                        <span x-show="route.freeSeatsCount > 0" class="badge badge-avail"><span class="dot dot-green"></span><span x-text="route.freeSeatsCount"></span> free seats</span>
+                        <span x-show="route.freeSeatsCount < 1" class="badge badge-empty"><span class="dot dot-gray"></span>No free seats</span>
+                    </td>
+                    <td x-text="priceRange(route)" class="price-range"></td>
+                    <td>
+                        <button x-show="!route.watchdog" @click="watchdogSet(route)" class="btn watchdog">Watch</button>
+                        <button x-show="route.watchdog" @click="watchdogRemove(route)" class="btn watchdog-remove">Remove</button>
+                    </td>
+                </tr>
+                </template>    
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        function searchComponent() {
+            return {
+                stations: [],
+                routes: [],
+                fromId: localStorage.getItem('fromId') || '',
+                toId: localStorage.getItem('toId') || '',
+                departure: localStorage.getItem('departure') || '',
+                async init() {
+                    this.$watch('fromId', val => localStorage.setItem('fromId', val))
+                    this.$watch('toId', val => localStorage.setItem('toId', val))
+                    this.$watch('departure', val => localStorage.setItem('departure', val))
+                    const res = await fetch('/constants')
+                    const data = await res.json();
+                    this.stations = Object.entries(data)
+                        .map(([id, name]) => ({id: Number(id),name: name}))
+                        .sort((a, b) => a.name.localeCompare(b.name));
+                },
+                async search() {
+                    if (this.fromId == this.toId)
+                        return;
+                    if (!this.fromId)
+                        return;
+                    if (!this.toId)
+                        return;
+                    if (!this.departure)
+                        return;
+
+                    const res = await fetch(`/routes?stationFromID=${this.fromId}&stationToID=${this.toId}&departureDate=${this.departureFormatted()}`)
+                    const data = await res.json();
+                    this.$dispatch('routes-set', {routes: data, fromId: this.fromId, toId: this.toId})
+                },
+                departureFormatted() {
+                    const [year, month, day] = this.departure.split('-')
+                    return `${day}.${month}.${year}`
+                }
+            }
+        }
+
+        function routesComponent() {
+            return {
+                routes: [],
+                fromId: 0,
+                toId: 0,
+                set: function(data) {
+                    this.routes = data.routes
+                    this.fromId = data.fromId
+                    this.toId = data.toId
+                },
+                priceRange(route) {
+                    if (route.priceFrom && route.priceTo) {
+                        return route.priceFrom + ' -  ' + route.priceTo
+                    } else if (route.priceFrom) {
+                        return 'from ' + route.priceFrom
+                    } else if (route.priceTo) {
+                        return 'to ' + route.priceTo
+                    } else {
+                        return '-'
+                    }
+                },
+                async watchdogSet(route) {
+                    const data = {
+                        stationFromID: this.fromId + "",
+                        stationToID: this.toId + "",
+                        routeID: route.id + "",
+                        webhookURL: "https://webhook.site/a94a1e1a-0d15-457f-904f-0b68d6a3ec73",
+                        checkSegments: false
+                    }
+                    this.watchdog('/watchdog', data, (data) => {
+                        const index = this.routes.findIndex(l => l.id === route.id);
+                        if (index !== -1) {
+                            this.routes[index].watchdog = true;
+                        }
+                    })
+                },
+                async watchdogRemove(route) {
+                    const data = {
+                        routeID: route.id + ""
+                    }
+                    this.watchdog('/watchdog/remove', data, (data) => {
+                        const index = this.routes.findIndex(l => l.id === route.id);
+                        if (index !== -1) {
+                            this.routes[index].watchdog = false;
+                        }
+                    })
+                },
+                async watchdog(url, data, callback) {
+                    await fetch(url, {method: 'POST',body: JSON.stringify(data)})
+                        .then(response => response.json())
+                        .then(callback)
+                        .catch(error => {
+                            console.error(error)
+                        });
+                }           
+            }
+        }
+    </script>
+    <script src="/alpine.js"></script>
+</body>
+</html>

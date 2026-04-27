@@ -2,11 +2,10 @@ package checker
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 
 	clientpkg "github.com/bxxf/regiojet-watchdog/internal/client"
@@ -40,38 +39,32 @@ func (c *Checker) handleKey(key string) {
 		return
 	}
 
-	webhookURL, stationFromID, stationToID, routeIDStr, err := c.parseValue(value)
+	var w models.Webhook
+	err = json.Unmarshal([]byte(value), &w)
 	if err != nil {
 		log.Println("Failed to parse value:", err)
 		return
 	}
 
-	routeDetails, freeSeatsResponse, err := c.fetchRouteDetails(routeIDStr, stationFromID, stationToID)
+	routeDetails, freeSeatsResponse, err := c.fetchRouteDetails(w.RouteID, w.StationFromID, w.StationToID)
 	if err != nil {
 		log.Println("Failed to fetch route details or free seats:", err)
 	}
 
 	if routeDetails != nil && routeDetails.FreeSeatsCount > 0 {
 		if freeSeatsResponse != nil {
-			c.discordService.NotifyDiscord(*freeSeatsResponse, *routeDetails, routeDetails.DepartureTime, webhookURL)
-			c.notifyAlternativeSegments(routeIDStr, stationFromID, stationToID, routeDetails.DepartureTime, webhookURL)
+			c.discordService.NotifyDiscord(*freeSeatsResponse, *routeDetails, routeDetails.DepartureTime, w.WebhookURL)
+			if w.CheckSegments {
+				c.notifyAlternativeSegments(w.RouteID, w.StationFromID, w.StationToID, routeDetails.DepartureTime, w.WebhookURL)
+			}
 		} else {
 			fmt.Printf("Free seats count is %d, but free seats response is nil\n", routeDetails.FreeSeatsCount)
 		}
-	} else if routeDetails != nil {
-		c.notifyAlternativeSegments(routeIDStr, stationFromID, stationToID, routeDetails.DepartureTime, webhookURL)
+	} else if routeDetails != nil && w.CheckSegments {
+		c.notifyAlternativeSegments(w.RouteID, w.StationFromID, w.StationToID, routeDetails.DepartureTime, w.WebhookURL)
 	} else {
 		fmt.Printf("Free seats count is 0, but route details are nil - %v\n", routeDetails)
 	}
-
-}
-
-func (c *Checker) parseValue(value string) (webhookURL, stationFromID, stationToID, routeIDStr string, err error) {
-	parts := strings.Split(value, ";;")
-	if len(parts) != 4 {
-		return "", "", "", "", errors.New("Invalid value format")
-	}
-	return parts[0], parts[1], parts[2], parts[3], nil
 }
 
 func (c *Checker) fetchRouteDetails(routeIDStr, stationFromID, stationToID string) (*models.RouteDetails, *models.FreeSeatsResponse, error) {
