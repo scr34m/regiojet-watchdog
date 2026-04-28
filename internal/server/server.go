@@ -124,6 +124,11 @@ func (s *Server) watchdogSetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) watchdogRemoveHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
 	body := struct {
 		RouteID string `json:"routeID"`
 	}{}
@@ -134,10 +139,22 @@ func (s *Server) watchdogRemoveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	routeInt, _ := strconv.Atoi(body.RouteID)
+	if body.RouteID == "" {
+		http.Error(w, "routeID is required", http.StatusBadRequest)
+		return
+	}
 
-	key := "watchdog:" + fmt.Sprint(routeInt)
-	s.database.RedisClient.Del(context.Background(), key)
+	key := "watchdog:" + body.RouteID
+	deleted, err := s.database.RedisClient.Del(context.Background(), key).Result()
+	if err != nil {
+		http.Error(w, "Failed to remove watchdog", http.StatusInternalServerError)
+		log.Println("Failed to remove watchdog:", err)
+		return
+	}
+	if deleted == 0 {
+		http.Error(w, "Watchdog not found", http.StatusNotFound)
+		return
+	}
 
 	res := struct {
 		Message string `json:"message"`
