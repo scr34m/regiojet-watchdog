@@ -238,6 +238,11 @@ tbody tr:hover td {
     background: #d9a200;
 }
 
+button:disabled,
+button[disabled] {
+    opacity: 0.4;
+}
+
 @media (max-width: 600px) {
 
     th:nth-child(4),

@@ -43,7 +43,7 @@
                     </select>
                 </div>
                 <div class="field">
-                    <button class="search-btn" type="button" @click="search()">Search</button>
+                    <button class="search-btn" type="button" @click="search()" :disabled="processing">Search</button>
                 </div>
             </div>
             <div class="row">
@@ -76,8 +76,8 @@
                             </td>
                             <td x-text="priceRange(route)" class="price-range"></td>
                             <td>
-                                <button x-show="!route.watchdog" @click="watchdogSet(route)" class="btn watchdog">Watch</button>
-                                <button x-show="route.watchdog" @click="watchdogRemove(route)" class="btn watchdog-remove">Remove</button>
+                                <button x-show="!route.watchdog" @click="watchdogSet(route)" class="btn watchdog" :disabled="processing">Watch</button>
+                                <button x-show="route.watchdog" @click="watchdogRemove(route)" class="btn watchdog-remove" :disabled="processing">Remove</button>
                             </td>
                         </tr>
                     </template>
@@ -131,6 +131,7 @@
             return {
                 stations: [],
                 routes: [],
+                processing: false,
                 async init() {
                     this.fetchConstants()
                 },
@@ -156,7 +157,9 @@
                     if (!this.$store.app.departure)
                         return
 
+                    this.processing = true
                     apiCall(`/routes?stationFromID=${this.$store.app.fromId}&stationToID=${this.$store.app.toId}&departureDate=${this.departureFormatted()}`, null, (data) => {
+                        this.processing = false
                         this.$dispatch('routes-set', data)
                     })
                 },
@@ -170,6 +173,7 @@
         function routesComponent() {
             return {
                 routes: [],
+                processing: false,
                 set: function (data) {
                     this.routes = data
                 },
@@ -197,7 +201,9 @@
                         webhookURL: webhookUrl,
                         checkSegments: this.$store.app.checkSegments === '1'
                     }
+                    this.processing = true
                     apiCall('/watchdog', data, (data) => {
+                        this.processing = false
                         const index = this.routes.findIndex(l => l.id === route.id)
                         if (index !== -1) {
                             this.routes[index].watchdog = true
@@ -208,7 +214,9 @@
                     const data = {
                         routeID: route.id + ""
                     }
+                    this.processing = true
                     apiCall('/watchdog/remove', data, (data) => {
+                        this.processing = false
                         const index = this.routes.findIndex(l => l.id === route.id)
                         if (index !== -1) {
                             this.routes[index].watchdog = false
