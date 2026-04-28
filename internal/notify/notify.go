@@ -129,11 +129,16 @@ func (n *NotifyService) NotifySimple(fields []map[string]interface{}, routeDetai
 		return errors.NotifyServiceJsonError, err
 	}
 
-	resp, err := http.Post(webhookURL, "application/json", bytes.NewReader(jsonPayload))
+	client := &http.Client{Timeout: 15 * time.Second}
+	req, err := http.NewRequest(http.MethodPost, webhookURL, bytes.NewReader(jsonPayload))
 	if err != nil {
 		return errors.NotifyServiceHttpError, err
 	}
-
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.NotifyServiceHttpError, err
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return errors.NotifyServiceHttpStatusError, &errors.NotifyServiceStatusError{Status: resp.StatusCode}
@@ -153,12 +158,17 @@ func (n *NotifyService) NotifyAlternatives(alternatives []map[string]interface{}
 		return errors.NotifyServiceJsonError, err
 	}
 
-	resp, err := http.Post(webhookURL, "application/json", bytes.NewReader(jsonPayload))
+	client := &http.Client{Timeout: 15 * time.Second}
+	req, err := http.NewRequest(http.MethodPost, webhookURL, bytes.NewReader(jsonPayload))
+	if err != nil {
+		return errors.NotifyServiceHttpError, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
 	if err != nil {
 		return errors.NotifyServiceHttpError, err
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
 		return errors.NotifyServiceHttpStatusError, &errors.NotifyServiceStatusError{Status: resp.StatusCode}
 	}

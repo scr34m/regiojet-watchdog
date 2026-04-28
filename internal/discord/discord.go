@@ -50,11 +50,16 @@ func (s *DiscordService) NotifyDiscord(fields []map[string]interface{}, routeDet
 		return errors.NotifyServiceJsonError, err
 	}
 
-	resp, err := http.Post(webhookURL, "application/json", bytes.NewReader(jsonPayload))
+	client := &http.Client{Timeout: 15 * time.Second}
+	req, err := http.NewRequest(http.MethodPost, webhookURL, bytes.NewReader(jsonPayload))
 	if err != nil {
 		return errors.NotifyServiceHttpError, err
 	}
-
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.NotifyServiceHttpError, err
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
 		return errors.NotifyServiceHttpStatusError, &errors.NotifyServiceStatusError{Status: resp.StatusCode}
@@ -83,11 +88,16 @@ func (s *DiscordService) NotifyDiscordAlternatives(alternatives []map[string]int
 		return errors.NotifyServiceJsonError, err
 	}
 
-	resp, err := http.Post(webhookURL, "application/json", bytes.NewReader(jsonPayload))
+	client := &http.Client{Timeout: 15 * time.Second}
+	req, err := http.NewRequest(http.MethodPost, webhookURL, bytes.NewReader(jsonPayload))
 	if err != nil {
 		return errors.NotifyServiceHttpError, err
 	}
-
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return errors.NotifyServiceHttpError, err
+	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
 		return errors.NotifyServiceHttpStatusError, &errors.NotifyServiceStatusError{Status: resp.StatusCode}
