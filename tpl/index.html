@@ -105,7 +105,7 @@
             await fetch(url, request)
                 .then(async response => {
                     if (response.status === 200) {
-                        const json = await response.json();
+                        const json = await response.json()
                         callback(json)
                     } else {
                         console.log(response)
@@ -185,11 +185,16 @@
                     }
                 },
                 async watchdogSet(route) {
+                    const webhookUrl = this.$store.app.webhookUrl.trim()
+                    if (!webhookUrl) {
+                        alert('Please configure a webhook URL first.')
+                        return
+                    }                    
                     const data = {
                         stationFromID: this.$store.app.fromId + '',
                         stationToID: this.$store.app.toId + '',
                         routeID: route.id + '',
-                        webhookURL: this.$store.app.webhookUrl,
+                        webhookURL: webhookUrl,
                         checkSegments: this.$store.app.checkSegments === '1'
                     }
                     apiCall('/watchdog', data, (data) => {
