@@ -13,26 +13,26 @@
     <div class="container">
         <div x-data="searchComponent()" class="search-container">
             <div class="field">
-                <label>Stration from</label>
+                <label>Station from</label>
                 <select x-model="fromId">
-                    <optio value="">---</option>
-                    <template x-for="station in stations" :key="station.id">
-                    <option :value="station.id" :selected="station.id == fromId" x-text="station.name"></option>
-                    </template>    
+                    <option value="">---</option>
+                        <template x-for="station in stations" :key="station.id">
+                            <option :value="station.id" :selected="station.id == fromId" x-text="station.name"></option>
+                        </template>
                 </select>
             </div>
             <div class="field">
                 <label>Station to</label>
                 <select x-model="toId">
-                    <optio value="">---</option>
-                    <template x-for="station in stations" :key="station.id">
-                    <option :value="station.id" :selected="station.id == toId" x-text="station.name"></option>
-                    </template>    
+                    <option value="">---</option>
+                        <template x-for="station in stations" :key="station.id">
+                            <option :value="station.id" :selected="station.id == toId" x-text="station.name"></option>
+                        </template>
                 </select>
             </div>
             <div class="field">
                 <label>Departure</label>
-                <input type="date" x-model="departure"> 
+                <input type="date" x-model="departure">
             </div>
             <button class="search-btn" type="button" @click="search()">Search</button>
         </div>
@@ -40,30 +40,35 @@
         <div x-data="routesComponent()" @routes-set.window="set($event.detail)" class="routes">
             <table>
                 <thead>
-                <tr>
-                    <th>Departure</th>
-                    <th>Arrival</th>
-                    <th>Seats</th>
-                    <th>Price</th>
-                    <th>&nbsp;</th>
-                </tr>
+                    <tr>
+                        <th>Departure</th>
+                        <th>Arrival</th>
+                        <th>Seats</th>
+                        <th>Price</th>
+                        <th>&nbsp;</th>
+                    </tr>
                 </thead>
                 <tbody>
-                <template x-for="route in routes" :key="route.id">
-                <tr :class="{'has-seats': route.bookable, 'no-seats': !route.bookable}">
-                    <td x-text="route.departureTime" class="time-dep"></td>
-                    <td x-text="route.arrivalTime" class="time-arr"></td>
-                    <td>
-                        <span x-show="route.freeSeatsCount > 0" class="badge badge-avail"><span class="dot dot-green"></span><span x-text="route.freeSeatsCount"></span> free seats</span>
-                        <span x-show="route.freeSeatsCount < 1" class="badge badge-empty"><span class="dot dot-gray"></span>No free seats</span>
-                    </td>
-                    <td x-text="priceRange(route)" class="price-range"></td>
-                    <td>
-                        <button x-show="!route.watchdog" @click="watchdogSet(route)" class="btn watchdog">Watch</button>
-                        <button x-show="route.watchdog" @click="watchdogRemove(route)" class="btn watchdog-remove">Remove</button>
-                    </td>
-                </tr>
-                </template>    
+                    <template x-for="route in routes" :key="route.id">
+                        <tr :class="{'has-seats': route.bookable, 'no-seats': !route.bookable}">
+                            <td x-text="route.departureTime" class="time-dep"></td>
+                            <td x-text="route.arrivalTime" class="time-arr"></td>
+                            <td>
+                                <span x-show="route.freeSeatsCount > 0" class="badge badge-avail"><span
+                                        class="dot dot-green"></span><span x-text="route.freeSeatsCount"></span> free
+                                    seats</span>
+                                <span x-show="route.freeSeatsCount < 1" class="badge badge-empty"><span
+                                        class="dot dot-gray"></span>No free seats</span>
+                            </td>
+                            <td x-text="priceRange(route)" class="price-range"></td>
+                            <td>
+                                <button x-show="!route.watchdog" @click="watchdogSet(route)"
+                                    class="btn watchdog">Watch</button>
+                                <button x-show="route.watchdog" @click="watchdogRemove(route)"
+                                    class="btn watchdog-remove">Remove</button>
+                            </td>
+                        </tr>
+                    </template>
                 </tbody>
             </table>
         </div>
@@ -189,4 +194,5 @@
     </script>
     <script src="/alpine.js"></script>
 </body>
+
 </html>
