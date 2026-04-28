@@ -90,6 +90,7 @@ func (s *Server) watchdogSetHandler(w http.ResponseWriter, r *http.Request) {
 		StationToID   string `json:"stationToID"`
 		RouteID       string `json:"routeID"`
 		WebhookURL    string `json:"webhookURL"`
+		WebhookType   string `json:"webhookType"`
 		CheckSegments bool   `json:"checkSegments"`
 	}{}
 
@@ -114,6 +115,11 @@ func (s *Server) watchdogSetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if body.WebhookType != "discord" && body.WebhookType != "simple" {
+		http.Error(w, "WebhookType accepts only discord or simple as value", http.StatusBadRequest)
+		return
+	}
+
 	departureDuration := time.Until(departureTime)
 	if departureDuration <= 0 {
 		http.Error(w, "Departure has already passed", http.StatusBadRequest)
@@ -122,6 +128,7 @@ func (s *Server) watchdogSetHandler(w http.ResponseWriter, r *http.Request) {
 
 	jsonWebhook, err := json.Marshal(models.Webhook{
 		WebhookURL:    body.WebhookURL,
+		WebhookType:   body.WebhookType,
 		StationFromID: body.StationFromID,
 		StationToID:   body.StationToID,
 		RouteID:       body.RouteID,

@@ -51,6 +51,13 @@
                     <label>Webhook URL</label>
                     <input x-model="$store.app.webhookUrl" type="text" size="64">
                 </div>
+                <div class="field">
+                    <label>Webhook type</label>
+                    <select x-model="$store.app.webhookType">
+                        <option value="discord">Discord</option>
+                        <option value="simple">Simple</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -117,9 +124,10 @@
                 toId: localStorage.getItem('toId') || '',
                 departure: localStorage.getItem('departure') || '',
                 webhookUrl: localStorage.getItem('webhookUrl') || '',
+                webhookType: localStorage.getItem('webhookType') || '',
                 checkSegments: localStorage.getItem('checkSegments') || ''
             })
-            const keys = ['fromId', 'toId', 'departure', 'webhookUrl', 'checkSegments']
+            const keys = ['fromId', 'toId', 'departure', 'webhookUrl', 'webhookType', 'checkSegments']
             keys.forEach(key => {
                 Alpine.effect(() => {
                     localStorage.setItem(key, Alpine.store('app')[key])
@@ -199,6 +207,7 @@
                         stationToID: String(this.$store.app.toId),
                         routeID: String(route.id),
                         webhookURL: webhookUrl,
+                        webhookType: this.$store.app.webhookType.trim(),
                         checkSegments: this.$store.app.checkSegments === '1'
                     }
                     this.processing = true

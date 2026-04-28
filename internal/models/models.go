@@ -92,6 +92,7 @@ type Stop struct {
 
 type Webhook struct {
 	WebhookURL    string `json:"webhookUrl"`
+	WebhookType   string `json:"webhookType"`
 	StationFromID string `json:"stationFromId"`
 	StationToID   string `json:"stationToId"`
 	RouteID       string `json:"routeId"`

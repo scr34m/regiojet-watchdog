@@ -11,27 +11,27 @@ import (
 	clientpkg "github.com/bxxf/regiojet-watchdog/internal/client"
 	"github.com/bxxf/regiojet-watchdog/internal/config"
 	databasepkg "github.com/bxxf/regiojet-watchdog/internal/database"
-	discordpkg "github.com/bxxf/regiojet-watchdog/internal/discord"
 	"github.com/bxxf/regiojet-watchdog/internal/models"
+	"github.com/bxxf/regiojet-watchdog/internal/notify"
 	segmentationpkg "github.com/bxxf/regiojet-watchdog/internal/segmentation"
 	"go.uber.org/fx"
 )
 
 type Checker struct {
 	config              config.Config
-	discordService      *discordpkg.DiscordService
+	notifyService       *notify.NotifyService
 	trainClient         *clientpkg.TrainClient
 	database            *databasepkg.DatabaseClient
 	segmentationService *segmentationpkg.SegmentationService
 }
 
-func NewChecker(config config.Config, database *databasepkg.DatabaseClient, segmentationService *segmentationpkg.SegmentationService, client *clientpkg.TrainClient, discordService *discordpkg.DiscordService) *Checker {
+func NewChecker(config config.Config, database *databasepkg.DatabaseClient, segmentationService *segmentationpkg.SegmentationService, client *clientpkg.TrainClient, notifyService *notify.NotifyService) *Checker {
 	return &Checker{
 		config:              config,
 		trainClient:         client,
 		database:            database,
 		segmentationService: segmentationService,
-		discordService:      discordService,
+		notifyService:       notifyService,
 	}
 }
 
@@ -56,15 +56,15 @@ func (c *Checker) handleKey(key string) {
 
 	if routeDetails != nil && routeDetails.FreeSeatsCount > 0 {
 		if freeSeatsResponse != nil {
-			c.discordService.NotifyDiscord(*freeSeatsResponse, *routeDetails, routeDetails.DepartureTime, w.WebhookURL)
+			c.notifyService.Dispatch(*freeSeatsResponse, *routeDetails, routeDetails.DepartureTime, w.WebhookType, w.WebhookURL)
 			if w.CheckSegments {
-				c.notifyAlternativeSegments(w.RouteID, w.StationFromID, w.StationToID, routeDetails.DepartureTime, w.WebhookURL)
+				c.notifyAlternativeSegments(w.RouteID, w.StationFromID, w.StationToID, routeDetails.DepartureTime, w.WebhookType, w.WebhookURL)
 			}
 		} else {
 			fmt.Printf("Free seats count is %d, but free seats response is nil\n", routeDetails.FreeSeatsCount)
 		}
 	} else if routeDetails != nil && w.CheckSegments {
-		c.notifyAlternativeSegments(w.RouteID, w.StationFromID, w.StationToID, routeDetails.DepartureTime, w.WebhookURL)
+		c.notifyAlternativeSegments(w.RouteID, w.StationFromID, w.StationToID, routeDetails.DepartureTime, w.WebhookType, w.WebhookURL)
 	} else {
 		fmt.Printf("Free seats count is 0, but route details are nil - %v\n", routeDetails)
 	}
@@ -81,7 +81,7 @@ func (c *Checker) fetchRouteDetails(routeIDStr, stationFromID, stationToID strin
 	return routeDetails, &freeSeatsResponse, err
 }
 
-func (c *Checker) notifyAlternativeSegments(routeIDStr, stationFromID, stationToID, departureTimeStr, webhookURL string) {
+func (c *Checker) notifyAlternativeSegments(routeIDStr, stationFromID, stationToID, departureTimeStr, webhookType string, webhookURL string) {
 	departureTime, _ := time.Parse(time.RFC3339, departureTimeStr)
 	departureDate := departureTime.Format("02.01.2006")
 	availableSegments, err := c.segmentationService.FindAvailableSegments(routeIDStr, stationFromID, stationToID, departureDate)
@@ -90,7 +90,7 @@ func (c *Checker) notifyAlternativeSegments(routeIDStr, stationFromID, stationTo
 		return
 	}
 	if len(availableSegments) > 0 {
-		c.discordService.NotifyDiscordAlternatives(availableSegments, webhookURL)
+		c.notifyService.DispatchAlternative(availableSegments, webhookType, webhookURL)
 	}
 }
 

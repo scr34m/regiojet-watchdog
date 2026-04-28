@@ -87,12 +87,14 @@ with the following JSON payload:
     "stationToID": "1841058000",
     "routeID": "6618452367",
     "webhookURL": "https://discord.com/api/webhooks/your_webhook_id/your_webhook_token",
+    "webhookType": "discord",
     "checkSegments": true
 }
 ```
 
 
 Replace `your_webhook_id` and `your_webhook_token` with your actual Discord Webhook ID and token.
+The `webhookType` accepts `discord` or `simple` values. 
 
 The `checkSegments` option determines whether segmented routes should be checked.
 
