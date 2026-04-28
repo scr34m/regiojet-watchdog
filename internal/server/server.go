@@ -92,8 +92,19 @@ func (s *Server) watchdogSetHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println("Failed to fetch route details:", err)
 		return
 	}
-	departureTime, _ := time.Parse(time.RFC3339, routeDetails.DepartureTime)
-	departureDuration := departureTime.Sub(time.Now())
+
+	departureTime, err := time.Parse(time.RFC3339, routeDetails.DepartureTime)
+	if err != nil {
+		http.Error(w, "Failed to parse departure time", http.StatusInternalServerError)
+		log.Println("Failed to parse departure time:", err)
+		return
+	}
+
+	departureDuration := time.Until(departureTime)
+	if departureDuration <= 0 {
+		http.Error(w, "Departure has already passed", http.StatusBadRequest)
+		return
+	}
 
 	jsonWebhook, err := json.Marshal(models.Webhook{
 		WebhookURL:    body.WebhookURL,
