@@ -42,7 +42,7 @@ func LoadConfig() Config {
 		if err != nil {
 			log.Fatal("invalid CHECK_INTERVAL_MINUTES: must be a number")
 		}
-		if interval < 0 {
+		if parsed < 0 {
 			log.Fatal("invalid CHECK_INTERVAL_MINUTES: must greater or equal zero")
 		}
 		interval = parsed
