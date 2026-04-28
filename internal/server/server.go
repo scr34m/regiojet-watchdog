@@ -134,7 +134,11 @@ func (s *Server) watchdogSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := "watchdog:" + fmt.Sprint(routeInt)
-	s.database.RedisClient.Set(context.Background(), key, jsonWebhook, departureDuration)
+	if err := s.database.RedisClient.Set(context.Background(), key, jsonWebhook, departureDuration).Err(); err != nil {
+		http.Error(w, "Failed to store watchdog", http.StatusInternalServerError)
+		log.Println("Failed to store watchdog:", err)
+		return
+	}
 
 	res := struct {
 		Message string `json:"message"`
