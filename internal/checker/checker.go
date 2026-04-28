@@ -9,6 +9,7 @@ import (
 	"time"
 
 	clientpkg "github.com/bxxf/regiojet-watchdog/internal/client"
+	"github.com/bxxf/regiojet-watchdog/internal/config"
 	databasepkg "github.com/bxxf/regiojet-watchdog/internal/database"
 	discordpkg "github.com/bxxf/regiojet-watchdog/internal/discord"
 	"github.com/bxxf/regiojet-watchdog/internal/models"
@@ -17,14 +18,16 @@ import (
 )
 
 type Checker struct {
+	config              config.Config
 	discordService      *discordpkg.DiscordService
 	trainClient         *clientpkg.TrainClient
 	database            *databasepkg.DatabaseClient
 	segmentationService *segmentationpkg.SegmentationService
 }
 
-func NewChecker(database *databasepkg.DatabaseClient, segmentationService *segmentationpkg.SegmentationService, client *clientpkg.TrainClient, discordService *discordpkg.DiscordService) *Checker {
+func NewChecker(config config.Config, database *databasepkg.DatabaseClient, segmentationService *segmentationpkg.SegmentationService, client *clientpkg.TrainClient, discordService *discordpkg.DiscordService) *Checker {
 	return &Checker{
+		config:              config,
 		trainClient:         client,
 		database:            database,
 		segmentationService: segmentationService,
@@ -92,7 +95,7 @@ func (c *Checker) notifyAlternativeSegments(routeIDStr, stationFromID, stationTo
 }
 
 func (c *Checker) periodicallyCheck() {
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(time.Duration(c.config.CheckIntervalMinutes) * time.Minute)
 	defer ticker.Stop()
 
 	for {

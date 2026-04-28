@@ -26,6 +26,10 @@ First, you will need to set up your environment variables. Create a file named .
 ```REDIS_URL=your_redis_url```
 Replace `your_redis_url` with your actual Redis connection URL. You can also add `PORT`, if you want to change it from default `7900`.
 
+To change the check interval in minutes, add this line:
+```CHECK_INTERVAL_MINUTES=60```
+default value is `1`.
+
 ## Running the Server
 Navigate to the project directory and run the following command to start the server:
 ```go run .```
