@@ -12,29 +12,46 @@
 <body>
     <div class="container">
         <div x-data="searchComponent()" class="search-container">
-            <div class="field">
-                <label>Station from</label>
-                <select x-model="fromId">
-                    <option value="">---</option>
-                        <template x-for="station in stations" :key="station.id">
-                            <option :value="station.id" :selected="station.id == fromId" x-text="station.name"></option>
-                        </template>
-                </select>
+            <div class="row">
+                <div class="field">
+                    <label>Station from</label>
+                    <select x-model="$store.app.fromId">
+                        <option value="">---</option>
+                            <template x-for="station in stations" :key="station.id">
+                                <option :value="station.id" :selected="station.id == $store.app.fromId" x-text="station.name"></option>
+                            </template>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Station to</label>
+                    <select x-model="$store.app.toId">
+                        <option value="">---</option>
+                            <template x-for="station in stations" :key="station.id">
+                                <option :value="station.id" :selected="station.id == $store.app.toId" x-text="station.name"></option>
+                            </template>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Departure</label>
+                    <input type="date" x-model="$store.app.departure">
+                </div>
+                <div class="field">
+                    <label>Segments</label>
+                    <select x-model="$store.app.checkSegments">
+                        <option value="0">Disabled</option>
+                        <option value="1">Enabled</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <button class="search-btn" type="button" @click="search()">Search</button>
+                </div>
             </div>
-            <div class="field">
-                <label>Station to</label>
-                <select x-model="toId">
-                    <option value="">---</option>
-                        <template x-for="station in stations" :key="station.id">
-                            <option :value="station.id" :selected="station.id == toId" x-text="station.name"></option>
-                        </template>
-                </select>
+            <div class="row">
+                <div class="field">
+                    <label>Webhook URL</label>
+                    <input x-model="$store.app.webhookUrl" type="text" size="64">
+                </div>
             </div>
-            <div class="field">
-                <label>Departure</label>
-                <input type="date" x-model="departure">
-            </div>
-            <button class="search-btn" type="button" @click="search()">Search</button>
         </div>
 
         <div x-data="routesComponent()" @routes-set.window="set($event.detail)" class="routes">
@@ -99,17 +116,27 @@
                 })
         }
 
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('app', {
+                fromId: localStorage.getItem('fromId') || '',
+                toId: localStorage.getItem('toId') || '',
+                departure: localStorage.getItem('departure') || '',
+                webhookUrl: localStorage.getItem('webhookUrl') || '',
+                checkSegments: localStorage.getItem('checkSegments') || ''
+            })
+            const keys = ['fromId', 'toId', 'departure', 'webhookUrl', 'checkSegments']
+            keys.forEach(key => {
+                Alpine.effect(() => {
+                    localStorage.setItem(key, Alpine.store('app')[key])
+                })
+            })
+        })
+
         function searchComponent() {
             return {
                 stations: [],
                 routes: [],
-                fromId: localStorage.getItem('fromId') || '',
-                toId: localStorage.getItem('toId') || '',
-                departure: localStorage.getItem('departure') || '',
                 async init() {
-                    this.$watch('fromId', val => localStorage.setItem('fromId', val))
-                    this.$watch('toId', val => localStorage.setItem('toId', val))
-                    this.$watch('departure', val => localStorage.setItem('departure', val))
                     this.fetchConstants()
                 },
                 fetchConstants() {
@@ -120,21 +147,21 @@
                     })
                 },
                 async search() {
-                    if (this.fromId == this.toId)
+                    if (this.$store.app.fromId == this.$store.app.toId)
                         return
-                    if (!this.fromId)
+                    if (!this.$store.app.fromId)
                         return
-                    if (!this.toId)
+                    if (!this.$store.app.toId)
                         return
-                    if (!this.departure)
+                    if (!this.$store.app.departure)
                         return
 
-                    apiCall(`/routes?stationFromID=${this.fromId}&stationToID=${this.toId}&departureDate=${this.departureFormatted()}`, null, (data) => {
-                        this.$dispatch('routes-set', { routes: data, fromId: this.fromId, toId: this.toId })
+                    apiCall(`/routes?stationFromID=${this.$store.app.fromId}&stationToID=${this.$store.app.toId}&departureDate=${this.departureFormatted()}`, null, (data) => {
+                        this.$dispatch('routes-set', data)
                     })
                 },
                 departureFormatted() {
-                    const [year, month, day] = this.departure.split('-')
+                    const [year, month, day] = this.$store.app.departure.split('-')
                     return `${day}.${month}.${year}`
                 }
             }
@@ -143,12 +170,8 @@
         function routesComponent() {
             return {
                 routes: [],
-                fromId: 0,
-                toId: 0,
                 set: function (data) {
-                    this.routes = data.routes
-                    this.fromId = data.fromId
-                    this.toId = data.toId
+                    this.routes = data
                 },
                 priceRange(route) {
                     if (route.priceFrom && route.priceTo) {
@@ -163,15 +186,14 @@
                 },
                 async watchdogSet(route) {
                     const data = {
-                        stationFromID: this.fromId + "",
-                        stationToID: this.toId + "",
-                        routeID: route.id + "",
-                        webhookURL: "https://webhook.site/a94a1e1a-0d15-457f-904f-0b68d6a3ec73",
-                        checkSegments: false
+                        stationFromID: this.$store.app.fromId + '',
+                        stationToID: this.$store.app.toId + '',
+                        routeID: route.id + '',
+                        webhookURL: this.$store.app.webhookUrl,
+                        checkSegments: this.$store.app.checkSegments === '1'
                     }
                     apiCall('/watchdog', data, (data) => {
                         const index = this.routes.findIndex(l => l.id === route.id)
-                        console.log(index)
                         if (index !== -1) {
                             this.routes[index].watchdog = true
                         }
@@ -183,7 +205,6 @@
                     }
                     apiCall('/watchdog/remove', data, (data) => {
                         const index = this.routes.findIndex(l => l.id === route.id)
-                        console.log(index)
                         if (index !== -1) {
                             this.routes[index].watchdog = false
                         }
