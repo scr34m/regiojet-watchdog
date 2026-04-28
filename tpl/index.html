@@ -70,6 +70,30 @@
     </div>
 
     <script type="text/javascript">
+        async function apiCall(url, data, callback) {
+            let request = {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            }
+            if (data) {
+                request['method'] = 'POST'
+                request['headers']['Content-Type'] = 'application/json'
+                request['body'] = JSON.stringify(data)
+            }
+            await fetch(url, request)
+                .then(async response => {
+                    if (response.status === 200) {
+                        const json = await response.json();
+                        callback(json)
+                    } else {
+                        console.log(response)
+                    }
+                })
+                .catch(error => {
+                    console.error(error)
+                })
+        }
+
         function searchComponent() {
             return {
                 stations: [],
@@ -81,25 +105,28 @@
                     this.$watch('fromId', val => localStorage.setItem('fromId', val))
                     this.$watch('toId', val => localStorage.setItem('toId', val))
                     this.$watch('departure', val => localStorage.setItem('departure', val))
-                    const res = await fetch('/constants')
-                    const data = await res.json();
-                    this.stations = Object.entries(data)
-                        .map(([id, name]) => ({id: Number(id),name: name}))
-                        .sort((a, b) => a.name.localeCompare(b.name));
+                    this.fetchConstants()
+                },
+                fetchConstants() {
+                    apiCall('/constants', null, (data) => {
+                        this.stations = Object.entries(data)
+                            .map(([id, name]) => ({ id: Number(id), name: name }))
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                    })
                 },
                 async search() {
                     if (this.fromId == this.toId)
-                        return;
+                        return
                     if (!this.fromId)
-                        return;
+                        return
                     if (!this.toId)
-                        return;
+                        return
                     if (!this.departure)
-                        return;
+                        return
 
-                    const res = await fetch(`/routes?stationFromID=${this.fromId}&stationToID=${this.toId}&departureDate=${this.departureFormatted()}`)
-                    const data = await res.json();
-                    this.$dispatch('routes-set', {routes: data, fromId: this.fromId, toId: this.toId})
+                    apiCall(`/routes?stationFromID=${this.fromId}&stationToID=${this.toId}&departureDate=${this.departureFormatted()}`, null, (data) => {
+                        this.$dispatch('routes-set', { routes: data, fromId: this.fromId, toId: this.toId })
+                    })
                 },
                 departureFormatted() {
                     const [year, month, day] = this.departure.split('-')
@@ -113,7 +140,7 @@
                 routes: [],
                 fromId: 0,
                 toId: 0,
-                set: function(data) {
+                set: function (data) {
                     this.routes = data.routes
                     this.fromId = data.fromId
                     this.toId = data.toId
@@ -137,10 +164,11 @@
                         webhookURL: "https://webhook.site/a94a1e1a-0d15-457f-904f-0b68d6a3ec73",
                         checkSegments: false
                     }
-                    this.watchdog('/watchdog', data, (data) => {
-                        const index = this.routes.findIndex(l => l.id === route.id);
+                    apiCall('/watchdog', data, (data) => {
+                        const index = this.routes.findIndex(l => l.id === route.id)
+                        console.log(index)
                         if (index !== -1) {
-                            this.routes[index].watchdog = true;
+                            this.routes[index].watchdog = true
                         }
                     })
                 },
@@ -148,21 +176,14 @@
                     const data = {
                         routeID: route.id + ""
                     }
-                    this.watchdog('/watchdog/remove', data, (data) => {
-                        const index = this.routes.findIndex(l => l.id === route.id);
+                    apiCall('/watchdog/remove', data, (data) => {
+                        const index = this.routes.findIndex(l => l.id === route.id)
+                        console.log(index)
                         if (index !== -1) {
-                            this.routes[index].watchdog = false;
+                            this.routes[index].watchdog = false
                         }
                     })
-                },
-                async watchdog(url, data, callback) {
-                    await fetch(url, {method: 'POST',body: JSON.stringify(data)})
-                        .then(response => response.json())
-                        .then(callback)
-                        .catch(error => {
-                            console.error(error)
-                        });
-                }           
+                }
             }
         }
     </script>
