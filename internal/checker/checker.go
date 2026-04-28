@@ -95,6 +95,10 @@ func (c *Checker) notifyAlternativeSegments(routeIDStr, stationFromID, stationTo
 }
 
 func (c *Checker) periodicallyCheck() {
+	if c.config.CheckIntervalMinutes <= 0 {
+		return
+	}
+
 	ticker := time.NewTicker(time.Duration(c.config.CheckIntervalMinutes) * time.Minute)
 	defer ticker.Stop()
 
@@ -114,7 +118,7 @@ func (c *Checker) periodicallyCheck() {
 }
 
 func RegisterCheckerHooks(lc fx.Lifecycle, checker *Checker) {
-	if checker.config.CheckIntervalMinutes > 0 {
+	if checker.config.CheckIntervalMinutes <= 0 {
 		return
 	}
 
