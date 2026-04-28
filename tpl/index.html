@@ -15,20 +15,20 @@
             <div class="row">
                 <div class="field">
                     <label>Station from</label>
-                    <select x-model="$store.app.fromId">
+                    <select x-ref="fromSelect" x-model="$store.app.fromId">
                         <option value="">---</option>
-                            <template x-for="station in stations" :key="station.id">
-                                <option :value="station.id" :selected="station.id == $store.app.fromId" x-text="station.name"></option>
-                            </template>
+                        <template x-for="station in stations" :key="station.id">
+                            <option :value="station.id" x-text="station.name"></option>
+                        </template>
                     </select>
                 </div>
                 <div class="field">
                     <label>Station to</label>
-                    <select x-model="$store.app.toId">
+                    <select x-ref="toSelect" x-model="$store.app.toId">
                         <option value="">---</option>
-                            <template x-for="station in stations" :key="station.id">
-                                <option :value="station.id" :selected="station.id == $store.app.toId" x-text="station.name"></option>
-                            </template>
+                        <template x-for="station in stations" :key="station.id">
+                            <option :value="station.id" x-text="station.name"></option>
+                        </template>
                     </select>
                 </div>
                 <div class="field">
@@ -71,18 +71,13 @@
                             <td x-text="route.departureTime" class="time-dep"></td>
                             <td x-text="route.arrivalTime" class="time-arr"></td>
                             <td>
-                                <span x-show="route.freeSeatsCount > 0" class="badge badge-avail"><span
-                                        class="dot dot-green"></span><span x-text="route.freeSeatsCount"></span> free
-                                    seats</span>
-                                <span x-show="route.freeSeatsCount < 1" class="badge badge-empty"><span
-                                        class="dot dot-gray"></span>No free seats</span>
+                                <span x-show="route.freeSeatsCount > 0" class="badge badge-avail"><span class="dot dot-green"></span><span x-text="route.freeSeatsCount"></span> free seats</span>
+                                <span x-show="route.freeSeatsCount < 1" class="badge badge-empty"><span class="dot dot-gray"></span>No free seats</span>
                             </td>
                             <td x-text="priceRange(route)" class="price-range"></td>
                             <td>
-                                <button x-show="!route.watchdog" @click="watchdogSet(route)"
-                                    class="btn watchdog">Watch</button>
-                                <button x-show="route.watchdog" @click="watchdogRemove(route)"
-                                    class="btn watchdog-remove">Remove</button>
+                                <button x-show="!route.watchdog" @click="watchdogSet(route)" class="btn watchdog">Watch</button>
+                                <button x-show="route.watchdog" @click="watchdogRemove(route)" class="btn watchdog-remove">Remove</button>
                             </td>
                         </tr>
                     </template>
@@ -142,8 +137,13 @@
                 fetchConstants() {
                     apiCall('/constants', null, (data) => {
                         this.stations = Object.entries(data)
-                            .map(([id, name]) => ({ id: Number(id), name: name }))
+                            .map(([id, name]) => ({ id: String(id), name: name }))
                             .sort((a, b) => a.name.localeCompare(b.name))
+
+                        this.$nextTick(() => {
+                            this.$refs.fromSelect.value = this.$store.app.fromId
+                            this.$refs.toSelect.value = this.$store.app.toId
+                        })      
                     })
                 },
                 async search() {
@@ -191,9 +191,9 @@
                         return
                     }                    
                     const data = {
-                        stationFromID: this.$store.app.fromId + '',
-                        stationToID: this.$store.app.toId + '',
-                        routeID: route.id + '',
+                        stationFromID: String(this.$store.app.fromId),
+                        stationToID: String(this.$store.app.toId),
+                        routeID: String(route.id),
                         webhookURL: webhookUrl,
                         checkSegments: this.$store.app.checkSegments === '1'
                     }
