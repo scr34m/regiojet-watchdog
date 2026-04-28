@@ -12,6 +12,7 @@ import (
 
 	"github.com/bxxf/regiojet-watchdog/internal/database"
 	"github.com/bxxf/regiojet-watchdog/internal/models"
+	"github.com/go-redis/redis/v8"
 	"go.uber.org/zap"
 )
 
@@ -100,9 +101,12 @@ func (c *TrainClient) FetchRoutes(stationFromID, stationToID, departureDate, cur
 
 		arrivalString := arrivalTime.Format("15:04")
 
-		key := "watchdog:" + fmt.Sprint(ticket.ID)
+		key := "watchdog:" + ticket.ID
 		_, err = c.database.RedisClient.Get(context.Background(), key).Result()
 		watchdog := err == nil
+		if err != nil && !errors.Is(err, redis.Nil) {
+			c.logger.Error("watchdog lookup failed", zap.String("key", key), zap.Error(err))
+		}
 
 		routes = append(routes, models.Route{
 			ID:            ticket.ID,
