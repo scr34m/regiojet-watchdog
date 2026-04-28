@@ -27,7 +27,7 @@ type TrainClient struct {
 func NewTrainClient(logger *zap.Logger, database *database.DatabaseClient) *TrainClient {
 	return &TrainClient{
 		logger:   logger,
-		client:   &http.Client{},
+		client:   &http.Client{Timeout: 15 * time.Second},
 		database: database,
 	}
 }
