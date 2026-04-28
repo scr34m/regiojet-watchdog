@@ -26,14 +26,12 @@ body {
     padding: 1rem 1.25rem;
     margin-bottom: 1.25rem;
     display: flex;
-    display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
 .row {
     flex: 1 1 auto;
-    display: flex;
     align-items: flex-end;
     display: flex;
     gap: 10px;
