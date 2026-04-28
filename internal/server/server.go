@@ -35,7 +35,21 @@ func NewServer(trainClient *client.TrainClient, config config.Config, constantsC
 }
 
 func (s *Server) run() {
-	http.Handle("/", http.FileServer(http.Dir("./tpl")))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		var files = map[string]string{
+			"/":           "./tpl/index.html",
+			"/index.html": "./tpl/index.html",
+			"/alpine.js":  "./tpl/alpine.js",
+			"/style.css":  "./tpl/style.css",
+		}
+		path := r.URL.Path
+		file, ok := files[path]
+		if !ok {
+			http.NotFound(w, r)
+		} else {
+			http.ServeFile(w, r, file)
+		}
+	})
 
 	http.HandleFunc("/routes", s.getRoutesHandler)
 	http.HandleFunc("/watchdog", s.watchdogSetHandler)
