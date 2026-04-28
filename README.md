@@ -94,7 +94,7 @@ The `checkSegments` option determines whether segmented routes should be checked
 
 ### Step 3: Remove a Watchdog
 
-Removes a watchdog by sending a request to
+Removes a watchdog by making a POST request to
 
 ```http://localhost:7900/watchdog/remove```
 
