@@ -114,6 +114,10 @@ func (c *Checker) periodicallyCheck() {
 }
 
 func RegisterCheckerHooks(lc fx.Lifecycle, checker *Checker) {
+	if checker.config.CheckIntervalMinutes > 0 {
+		return
+	}
+
 	lc.Append(fx.Hook{
 		OnStart: func(context.Context) error {
 			go checker.periodicallyCheck()

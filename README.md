@@ -28,7 +28,7 @@ Replace `your_redis_url` with your actual Redis connection URL. You can also add
 
 To change the check interval in minutes, add this line:
 ```CHECK_INTERVAL_MINUTES=60```
-default value is `1`.
+default value is `1`, `0` value will disable the check routine.
 
 ## Running the Server
 Navigate to the project directory and run the following command to start the server:
