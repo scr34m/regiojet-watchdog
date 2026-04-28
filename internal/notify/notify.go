@@ -68,6 +68,9 @@ func (n *NotifyService) DispatchAlternative(allRoutes [][]map[string]string, web
 
 	var routeInfo map[string]string
 	for _, route := range allRoutes {
+		if len(route) == 0 {
+			continue
+		}
 		var segmentsDescription string
 		totalPrice := route[len(route)-1]["totalPrice"]
 
@@ -165,18 +168,18 @@ func (n *NotifyService) NotifyAlternatives(alternatives []map[string]interface{}
 func (n *NotifyService) handleError(webhookType string, code int, err error) {
 	switch code {
 	case errors.NotifyServiceJsonError:
-		n.logger.Fatal("Failed to marshal "+webhookType+" JSON payload", zap.Error(err))
+		n.logger.Error("Failed to marshal "+webhookType+" JSON payload", zap.Error(err))
 	case errors.NotifyServiceHttpError:
-		n.logger.Fatal("Failed to send "+webhookType+" notification", zap.Error(err))
+		n.logger.Error("Failed to send "+webhookType+" notification", zap.Error(err))
 	case errors.NotifyServiceHttpStatusError:
 		var statusErr *errors.NotifyServiceStatusError
 		if errs.As(err, &statusErr) {
-			n.logger.Fatal(
+			n.logger.Error(
 				"Notification to "+webhookType+" returned wrong status",
 				zap.Int("status", statusErr.Status),
 			)
 			return
 		}
-		n.logger.Fatal("Notification to "+webhookType+" failed", zap.Error(err))
+		n.logger.Error("Notification to "+webhookType+" failed", zap.Error(err))
 	}
 }
