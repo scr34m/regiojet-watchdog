@@ -61,6 +61,10 @@
             </div>
         </div>
 
+        <div x-data="errorComponent()">
+            <div x-show="$store.app.error != ''" x-text="$store.app.error" class="error"></div>
+        </div>
+
         <div x-data="routesComponent()" @routes-set.window="set($event.detail)" class="routes">
             <table>
                 <thead>
@@ -116,6 +120,7 @@
 
         document.addEventListener('alpine:init', () => {
             Alpine.store('app', {
+                error: '',
                 fromId: localStorage.getItem('fromId') || '',
                 toId: localStorage.getItem('toId') || '',
                 departure: localStorage.getItem('departure') || '',
@@ -131,25 +136,34 @@
             })
         })
 
+        function errorComponent() {
+            return {
+                message: 'test'
+            }
+        }
+
         function searchComponent() {
             return {
                 stations: [],
                 routes: [],
                 processing: false,
                 async init() {
-                    this.fetchConstants()
-                },
-                fetchConstants() {
-                    apiCall('/constants', null, (data) => {
-                        this.stations = Object.entries(data)
-                            .map(([id, name]) => ({ id: String(id), name: name }))
-                            .sort((a, b) => a.name.localeCompare(b.name))
+                    this.$store.app.error = ''
+                    try {
+                        await apiCall('/constants', null, (data) => {
+                            this.stations = Object.entries(data)
+                                .map(([id, name]) => ({ id: String(id), name: name }))
+                                .sort((a, b) => a.name.localeCompare(b.name))
 
-                        this.$nextTick(() => {
-                            this.$refs.fromSelect.value = this.$store.app.fromId
-                            this.$refs.toSelect.value = this.$store.app.toId
-                        })      
-                    })
+                            this.$nextTick(() => {
+                                this.$refs.fromSelect.value = this.$store.app.fromId
+                                this.$refs.toSelect.value = this.$store.app.toId
+                            })      
+                        })
+                    } catch(error) {
+                        this.$store.app.error = 'Constants error: ' + error
+                    }                    
+                    
                 },
                 async search() {
                     if (this.$store.app.fromId == this.$store.app.toId)
@@ -162,12 +176,13 @@
                         return
 
                     this.processing = true
+                    this.$store.app.error = ''
                     try {
-                        apiCall(`/routes?stationFromID=${this.$store.app.fromId}&stationToID=${this.$store.app.toId}&departureDate=${this.departureFormatted()}`, null, (data) => {
+                        await apiCall(`/routes?stationFromID=${this.$store.app.fromId}&stationToID=${this.$store.app.toId}&departureDate=${this.departureFormatted()}`, null, (data) => {
                             this.$dispatch('routes-set', data)
                         })
                     } catch(error) {
-                        console.error(error)
+                        this.$store.app.error = 'Route list error: ' +  error
                     } finally {
                         this.processing = false
                     }
@@ -212,26 +227,38 @@
                         checkSegments: this.$store.app.checkSegments === '1'
                     }
                     this.processing = true
-                    apiCall('/watchdog', data, (data) => {
+                    this.$store.app.error = ''
+                    try {
+                        await apiCall('/watchdog', data, (data) => {
+                            const index = this.routes.findIndex(l => l.id === route.id)
+                            if (index !== -1) {
+                                this.routes[index].watchdog = true
+                            }
+                        })
+                    } catch(error) {
+                        this.$store.app.error = 'Watchdog set error: ' + error
+                    } finally {
                         this.processing = false
-                        const index = this.routes.findIndex(l => l.id === route.id)
-                        if (index !== -1) {
-                            this.routes[index].watchdog = true
-                        }
-                    })
+                    }
                 },
                 async watchdogRemove(route) {
                     const data = {
                         routeID: route.id + ""
                     }
                     this.processing = true
-                    apiCall('/watchdog/remove', data, (data) => {
+                    this.$store.app.error = ''
+                    try {
+                        await apiCall('/watchdog/remove', data, (data) => {
+                            const index = this.routes.findIndex(l => l.id === route.id)
+                            if (index !== -1) {
+                                this.routes[index].watchdog = false
+                            }
+                        })
+                    } catch(error) {
+                        this.$store.app.error = 'Watchdog remove error: ' + error
+                    } finally {
                         this.processing = false
-                        const index = this.routes.findIndex(l => l.id === route.id)
-                        if (index !== -1) {
-                            this.routes[index].watchdog = false
-                        }
-                    })
+                    }
                 }
             }
         }

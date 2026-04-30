@@ -254,3 +254,13 @@ button[disabled] {
         display: none;
     }
 }
+
+.error {
+    border-radius: 8px;
+    border: none;
+    background: #dc3545;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    font-size: 14px;
+    color: white;
+}
