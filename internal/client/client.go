@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bxxf/regiojet-watchdog/internal/database"
@@ -45,6 +46,24 @@ func (c *TrainClient) makeAPIRequest(method, url string, body []byte, headers ma
 	return c.client.Do(req)
 }
 
+func decodeAPIError(resp *http.Response) error {
+	var apiError models.APIError
+	if err := json.NewDecoder(resp.Body).Decode(&apiError); err != nil || apiError.Message == "" {
+		return fmt.Errorf("status: %d", resp.StatusCode)
+	}
+
+	var fields []string
+	for _, field := range apiError.ErrorFields {
+		if field.Value != "" {
+			fields = append(fields, field.Value)
+		}
+	}
+	if len(fields) > 0 {
+		return errors.New(strings.Join(fields, ", "))
+	}
+	return errors.New(apiError.Message)
+}
+
 func (c *TrainClient) FetchRoutes(stationFromID, stationToID, departureDate, currency string) ([]models.Route, error) {
 	parsedDepartureDate, err := time.Parse("02.01.2006", departureDate)
 	if err != nil {
@@ -67,12 +86,16 @@ func (c *TrainClient) FetchRoutes(stationFromID, stationToID, departureDate, cur
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, decodeAPIError(resp)
+	}
+
 	var responseJson models.Response
 	if err := json.NewDecoder(resp.Body).Decode(&responseJson); err != nil {
 		return nil, err
 	}
 
-	var routes []models.Route
+	routes := []models.Route{}
 	for _, ticket := range responseJson.Routes {
 		vehicleType := ticket.VehicleTypes[0]
 		if vehicleType == "BUS" {

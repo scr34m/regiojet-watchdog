@@ -17,6 +17,14 @@ type Response struct {
 	Routes []TrainTicket `json:"routes"`
 }
 
+type APIError struct {
+	Message     string `json:"message"`
+	ErrorFields []struct {
+		Key   string `json:"key"`
+		Value string `json:"value"`
+	} `json:"errorFields"`
+}
+
 type FreeSeat struct {
 	Index     int    `json:"index"`
 	SeatClass string `json:"seatClass"`

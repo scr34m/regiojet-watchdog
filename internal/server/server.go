@@ -73,7 +73,7 @@ func (s *Server) getRoutesHandler(w http.ResponseWriter, r *http.Request) {
 
 	routes, err := s.trainClient.FetchRoutes(stationFromID, stationToID, departureDateInput, "CZK")
 	if err != nil {
-		http.Error(w, "Failed to fetch routes", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		log.Println("Failed to fetch routes:", err)
 		return
 	}

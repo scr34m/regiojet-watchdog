@@ -33,7 +33,7 @@
                 </div>
                 <div class="field">
                     <label>Departure</label>
-                    <input type="date" x-model="$store.app.departure">
+                    <input type="date" x-model="$store.app.departure" :min="new Date().toLocaleDateString('sv')">
                 </div>
                 <div class="field">
                     <label>Segments</label>
@@ -111,7 +111,7 @@
             const response = await fetch(url, request)
             if (!response.ok) {
                 const text = await response.text()
-                throw new Error(`${response.status}: ${text}`)
+                throw new Error(text.trim() || `HTTP ${response.status}`)
             }
 
             const json = await response.json()
@@ -161,7 +161,7 @@
                             })      
                         })
                     } catch(error) {
-                        this.$store.app.error = 'Constants error: ' + error
+                        this.$store.app.error = 'Constants error: ' + error.message
                     }                    
                     
                 },
@@ -182,7 +182,7 @@
                             this.$dispatch('routes-set', data)
                         })
                     } catch(error) {
-                        this.$store.app.error = 'Route list error: ' +  error
+                        this.$store.app.error = 'Route list error: ' + error.message
                     } finally {
                         this.processing = false
                     }
@@ -236,7 +236,7 @@
                             }
                         })
                     } catch(error) {
-                        this.$store.app.error = 'Watchdog set error: ' + error
+                        this.$store.app.error = 'Watchdog set error: ' + error.message
                     } finally {
                         this.processing = false
                     }
@@ -255,7 +255,7 @@
                             }
                         })
                     } catch(error) {
-                        this.$store.app.error = 'Watchdog remove error: ' + error
+                        this.$store.app.error = 'Watchdog remove error: ' + error.message
                     } finally {
                         this.processing = false
                     }
